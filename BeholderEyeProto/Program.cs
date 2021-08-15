@@ -2,6 +2,7 @@
 {
   using Microsoft.Extensions.Logging;
   using OpenCvSharp;
+  using System;
   using System.Collections.Generic;
 
   class Program
@@ -25,18 +26,45 @@
 
     static IEnumerable<IEnumerable<Point>> ObtainCorrespondingImageLocations(string queryImagePath, string trainImagePath, string outputImagePath = null)
     {
+      if (string.IsNullOrWhiteSpace(queryImagePath))
+      {
+        throw new ArgumentNullException(nameof(queryImagePath));
+      }
+
+      if (string.IsNullOrWhiteSpace(trainImagePath))
+      {
+        throw new ArgumentNullException(nameof(trainImagePath));
+      }
+
       using var queryImage = Cv2.ImRead(queryImagePath);
       using var trainImage = Cv2.ImRead(trainImagePath);
+
+      if (queryImage.Empty())
+      {
+        throw new InvalidOperationException("The query image is empty.");
+      }
+
+      if (trainImage.Empty())
+      {
+        throw new InvalidOperationException("The train image is empty.");
+      }
 
       var locationsResult = new List<IEnumerable<Point>>();
 
       var matchProcessor = new SiftFlannMatchProcessor();
       DMatch[][] knn_matches = matchProcessor.ProcessAndObtainMatches(queryImage, trainImage, out KeyPoint[] queryKeyPoints, out KeyPoint[] trainKeyPoints);
 
-      var matchMaskFactory = new MatchMaskFactory(_loggerFactory.CreateLogger<MatchMaskFactory>());
-      using var mask = matchMaskFactory.CreateMatchMask(knn_matches, queryKeyPoints, trainKeyPoints, out var goodMatches);
+      var matchMaskFactory = new MatchMaskFactory(_loggerFactory.CreateLogger<MatchMaskFactory>())
+      {
+        RatioThreshold = 0.76f,
+        ScaleIncrement = 2.0f,
+        RotationBins = 20,
+        SkipScaleRotationCulling = false,
+      };
 
-      if (goodMatches.Count > 4)
+      using var mask = matchMaskFactory.CreateMatchMask(knn_matches, queryKeyPoints, trainKeyPoints, out var allGoodMatches);
+      var goodMatches = new List<DMatch>(allGoodMatches);
+      while (goodMatches.Count > 4)
       {
         // Use Homeography to obtain a perspective-corrected rectangle of the target in the query image.
         var sourcePoints = new Point2f[goodMatches.Count];
@@ -51,14 +79,14 @@
         Point[] targetPoints;
         using var homography = Cv2.FindHomography(InputArray.Create(sourcePoints), InputArray.Create(destinationPoints), HomographyMethods.Ransac, 5.0);
         {
-          Point2f[] obj_corners = {
-          new Point2f(0, 0),
-          new Point2f(queryImage.Cols, 0),
-          new Point2f(queryImage.Cols, queryImage.Rows),
-          new Point2f(0, queryImage.Rows)
-        };
+          Point2f[] queryCorners = {
+            new Point2f(0, 0),
+            new Point2f(queryImage.Cols, 0),
+            new Point2f(queryImage.Cols, queryImage.Rows),
+            new Point2f(0, queryImage.Rows)
+          };
 
-          Point2f[] dest = Cv2.PerspectiveTransform(obj_corners, homography);
+          Point2f[] dest = Cv2.PerspectiveTransform(queryCorners, homography);
           targetPoints = new Point[dest.Length];
           for (int i = 0; i < dest.Length; i++)
           {
@@ -67,6 +95,24 @@
         }
 
         locationsResult.Add(targetPoints);
+
+        // Remove matches within bounding rectangle
+        var matchesToRemove = new List<DMatch>();
+        for (int i = 0; i < goodMatches.Count; i++)
+        {
+          DMatch match = goodMatches[i];
+          var pt = trainKeyPoints[match.TrainIdx].Pt;
+          var inPoly = Cv2.PointPolygonTest(targetPoints, pt, false);
+          if (inPoly == 1)
+          {
+            matchesToRemove.Add(match);
+          }
+        }
+
+        foreach(var match in matchesToRemove)
+        {
+          goodMatches.Remove(match);
+        }
       }
 
       if (!string.IsNullOrWhiteSpace(outputImagePath))
@@ -74,7 +120,7 @@
         byte[] maskBytes = new byte[mask.Rows * mask.Cols];
         Cv2.Polylines(trainImage, locationsResult, true, new Scalar(255, 0, 0), 3, LineTypes.AntiAlias);
         using var outImg = new Mat();
-        Cv2.DrawMatches(queryImage, queryKeyPoints, trainImage, trainKeyPoints, goodMatches, outImg, new Scalar(0, 255, 0), flags: DrawMatchesFlags.NotDrawSinglePoints);
+        Cv2.DrawMatches(queryImage, queryKeyPoints, trainImage, trainKeyPoints, allGoodMatches, outImg, new Scalar(0, 255, 0), flags: DrawMatchesFlags.NotDrawSinglePoints);
         outImg.SaveImage(outputImagePath);
       }
 

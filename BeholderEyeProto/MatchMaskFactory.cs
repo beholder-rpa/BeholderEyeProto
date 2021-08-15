@@ -12,7 +12,16 @@
     public MatchMaskFactory(ILogger<MatchMaskFactory> logger)
     {
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      RatioThreshold = 0.76f;
+      ScaleIncrement = 1.5f;
+      RotationBins = 20;
     }
+
+    public float RatioThreshold { get; set; }
+    public float ScaleIncrement { get; set; }
+    public int RotationBins { get; set; }
+    public bool SkipScaleRotationCulling { get; set; }
 
     /// <summary>
     /// Returns a mask based on the supplied matches based on various algorithms
@@ -31,10 +40,32 @@
 
       int nonZero = Cv2.CountNonZero(mask);
       _logger.LogInformation($"Original Match Count: {nonZero}");
-      nonZero = ApplyDistanceRatioMatchCulling(matches, mask);
-      _logger.LogInformation($"Match Count after distance-ratio match culling: {nonZero}");
-      nonZero = ApplyScaleRotationMatchCulling(matches, queryKeypoints, trainKeypoints, mask);
-      _logger.LogInformation($"Match Count after scale-rotation match culling: {nonZero}");
+      if (nonZero > 0)
+      {
+        nonZero = ApplyDistanceRatioMatchCulling(matches, mask, RatioThreshold);
+        _logger.LogInformation($"Match Count after distance-ratio match culling: {nonZero}");
+      }
+      else
+      {
+        _logger.LogInformation($"Skipped distance-rotation match culling - no matches.");
+      }
+
+      if (nonZero > 0)
+      {
+        if (SkipScaleRotationCulling == false)
+        {
+          nonZero = ApplyScaleRotationMatchCulling(matches, queryKeypoints, trainKeypoints, mask, ScaleIncrement, RotationBins);
+          _logger.LogInformation($"Match Count after scale-rotation match culling: {nonZero}");
+        }
+        else
+        {
+          _logger.LogInformation($"Skipped scale-rotation match culling - skip scale-rotation match specified.");
+        }
+      }
+      else
+      {
+        _logger.LogInformation($"Skipped scale-rotation match culling - no matches.");
+      }
 
       MatIndexer<byte> maskIndexer = mask.GetGenericIndexer<byte>();
       for (int i = 0; i < mask.Rows; i++)
@@ -74,6 +105,11 @@
           r = r < 0.0f ? r + 360.0f : r;
           rotations.Add((float)r);
         }
+      }
+
+      if (logScale.Count == 0 || rotations.Count == 0)
+      {
+        return 0;
       }
 
       int scaleBinSize = (int)Math.Ceiling((maxS - minS) / Math.Log10(scaleIncrement));
