@@ -20,6 +20,7 @@
 
       ObtainCorrespondingImageLocations("./images/goldCookie.png", "./images/cookiescreen.png", "foo.png");
       ObtainCorrespondingImageLocations("./images/goldCookie.png", "./images/cookiescreen-1.png", "foo-1.png");
+      ObtainCorrespondingImageLocations("./images/goldCookie.png", "./images/cookiescreen-2.png", "foo-2.png");
     }
 
     static IEnumerable<IEnumerable<Point>> ObtainCorrespondingImageLocations(string queryImagePath, string trainImagePath, string outputImagePath = null)

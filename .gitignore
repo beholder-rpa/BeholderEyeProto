@@ -128,7 +128,4 @@ dist
 
 **/.idea
 
-usb-dev/**/*
-!usb-dev/.gitkeep
-
-/beholder-cerebrum/data/**/*.backup
+.DS_Store
