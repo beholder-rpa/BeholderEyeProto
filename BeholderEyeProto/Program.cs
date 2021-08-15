@@ -22,6 +22,7 @@
       ObtainCorrespondingImageLocations("./images/goldCookie.png", "./images/cookiescreen.png", "foo.png");
       ObtainCorrespondingImageLocations("./images/goldCookie.png", "./images/cookiescreen-1.png", "foo-1.png");
       ObtainCorrespondingImageLocations("./images/goldCookie.png", "./images/cookiescreen-2.png", "foo-2.png");
+      ObtainCorrespondingImageLocations("./images/goldCookie.png", "./images/cookiescreen-3.png", "foo-3.png");
     }
 
     static IEnumerable<IEnumerable<Point>> ObtainCorrespondingImageLocations(string queryImagePath, string trainImagePath, string outputImagePath = null)
@@ -76,36 +77,43 @@
           destinationPoints[i] = trainKeyPoints[match.TrainIdx].Pt;
         }
 
-        Point[] targetPoints;
+        Point[] targetPoints = null;
         using var homography = Cv2.FindHomography(InputArray.Create(sourcePoints), InputArray.Create(destinationPoints), HomographyMethods.Ransac, 5.0);
         {
-          Point2f[] queryCorners = {
-            new Point2f(0, 0),
-            new Point2f(queryImage.Cols, 0),
-            new Point2f(queryImage.Cols, queryImage.Rows),
-            new Point2f(0, queryImage.Rows)
-          };
-
-          Point2f[] dest = Cv2.PerspectiveTransform(queryCorners, homography);
-          targetPoints = new Point[dest.Length];
-          for (int i = 0; i < dest.Length; i++)
+          if (homography.Rows > 0)
           {
-            targetPoints[i] = dest[i].ToPoint();
+            Point2f[] queryCorners = {
+              new Point2f(0, 0),
+              new Point2f(queryImage.Cols, 0),
+              new Point2f(queryImage.Cols, queryImage.Rows),
+              new Point2f(0, queryImage.Rows)
+            };
+
+            Point2f[] dest = Cv2.PerspectiveTransform(queryCorners, homography);
+            targetPoints = new Point[dest.Length];
+            for (int i = 0; i < dest.Length; i++)
+            {
+              targetPoints[i] = dest[i].ToPoint();
+            }
           }
         }
 
-        locationsResult.Add(targetPoints);
-
-        // Remove matches within bounding rectangle
         var matchesToRemove = new List<DMatch>();
-        for (int i = 0; i < goodMatches.Count; i++)
+
+        if (targetPoints != null)
         {
-          DMatch match = goodMatches[i];
-          var pt = trainKeyPoints[match.TrainIdx].Pt;
-          var inPoly = Cv2.PointPolygonTest(targetPoints, pt, false);
-          if (inPoly == 1)
+          locationsResult.Add(targetPoints);
+
+          // Remove matches within bounding rectangle
+          for (int i = 0; i < goodMatches.Count; i++)
           {
-            matchesToRemove.Add(match);
+            DMatch match = goodMatches[i];
+            var pt = trainKeyPoints[match.TrainIdx].Pt;
+            var inPoly = Cv2.PointPolygonTest(targetPoints, pt, false);
+            if (inPoly == 1)
+            {
+              matchesToRemove.Add(match);
+            }
           }
         }
 
