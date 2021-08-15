@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31019.35
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BeholderEyeProto", "BeholderEyeProto\BeholderEyeProto.csproj", "{AC33FD02-B452-4F38-B526-F0235C6B6217}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{517C618A-F173-43BF-89F6-8F812F10343D}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AC33FD02-B452-4F38-B526-F0235C6B6217}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC33FD02-B452-4F38-B526-F0235C6B6217}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC33FD02-B452-4F38-B526-F0235C6B6217}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC33FD02-B452-4F38-B526-F0235C6B6217}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {33372AC1-8767-400F-9F88-A1435D26D900}
+	EndGlobalSection
+EndGlobal
