@@ -109,7 +109,13 @@
           }
         }
 
-        foreach(var match in matchesToRemove)
+        // If we're no longer doing meaningful work, break out of the loop
+        if (matchesToRemove.Count == 0)
+        {
+          break;
+        }
+
+        foreach (var match in matchesToRemove)
         {
           goodMatches.Remove(match);
         }
